@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sistema de Vendas</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- Ícones (sprite SVG) -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-dash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></symbol>
+    <symbol id="i-cart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M2 3h3l2.7 12.4a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 2-1.5L21 7H6"/></symbol>
+    <symbol id="i-box" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5M12 13v8"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0"/><path d="M16 4a4 4 0 0 1 0 8M22 21a7 7 0 0 0-4-6.3"/></symbol>
+    <symbol id="i-receipt" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2z"/><path d="M9 8h6M9 12h6"/></symbol>
+    <symbol id="i-layers" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 10 5-10 5L2 7z"/><path d="m2 17 10 5 10-5M2 12l10 5 10-5"/></symbol>
+    <symbol id="i-money" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 10v4M18 10v4"/></symbol>
+    <symbol id="i-trend" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 17 6-6 4 4 8-8"/><path d="M15 7h6v6"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-edit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m13.5 6.5 4 4"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 0 0-14.9-3M4 4v4h4M4 13a8 8 0 0 0 14.9 3M20 20v-4h-4"/></symbol>
+    <symbol id="i-globe" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></symbol>
+    <symbol id="i-server" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="7" rx="1.5"/><rect x="3" y="13" width="18" height="7" rx="1.5"/><path d="M7 7.5h.01M7 16.5h.01"/></symbol>
+    <symbol id="i-db" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 40 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 10h34M30 4l6 6-6 6"/></symbol>
+  </defs>
+</svg>
+
+<div class="app">
+  <!-- ================= Menu lateral ================= -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-logo">SV</div>
+      <div>
+        <div class="brand-name">Sistema de Vendas</div>
+        <div class="brand-sub">Computação em Nuvem</div>
+      </div>
+    </div>
+    <nav class="nav" id="nav">
+      <button data-view="painel" class="active"><svg><use href="#i-dash"/></svg><span>Painel</span></button>
+      <button data-view="pdv"><svg><use href="#i-cart"/></svg><span>Nova venda</span></button>
+      <button data-view="vendas"><svg><use href="#i-receipt"/></svg><span>Vendas</span></button>
+      <button data-view="produtos"><svg><use href="#i-box"/></svg><span>Produtos</span></button>
+      <button data-view="clientes"><svg><use href="#i-users"/></svg><span>Clientes</span></button>
+      <button data-view="arquitetura"><svg><use href="#i-layers"/></svg><span>Arquitetura</span></button>
+    </nav>
+    <div class="sidebar-foot">
+      <div class="row"><span>web</span><span id="sf-web">●</span></div>
+      <div class="row"><span>api</span><span id="sf-api">…</span></div>
+      <div class="row"><span>db</span><span id="sf-db">…</span></div>
+    </div>
+  </aside>
+
+  <!-- ================= Conteúdo ================= -->
+  <main class="main">
+    <header class="topbar">
+      <div>
+        <h1 id="page-title">Painel</h1>
+        <p id="page-sub">Visão geral das vendas</p>
+      </div>
+      <div class="status-pill" title="Saúde dos contêineres"><span class="dot" id="status-dot"></span><span id="status-text">Verificando…</span></div>
+    </header>
+
+    <!-- ---------- Painel ---------- -->
+    <section class="view active" id="view-painel">
+      <div class="grid kpis">
+        <div class="card kpi"><div class="ico ico-blue"><svg><use href="#i-money"/></svg></div><div class="label">Faturamento total</div><div class="value num" id="k-fat">—</div><div class="sub">vendas concluídas</div></div>
+        <div class="card kpi"><div class="ico ico-orange"><svg><use href="#i-receipt"/></svg></div><div class="label">Vendas realizadas</div><div class="value num" id="k-vendas">—</div><div class="sub">desde o início</div></div>
+        <div class="card kpi"><div class="ico ico-green"><svg><use href="#i-trend"/></svg></div><div class="label">Ticket médio</div><div class="value num" id="k-ticket">—</div><div class="sub">valor médio por venda</div></div>
+        <div class="card kpi"><div class="ico ico-yellow"><svg><use href="#i-sun"/></svg></div><div class="label">Vendas hoje</div><div class="value num" id="k-hoje">—</div><div class="sub" id="k-hoje-sub">—</div></div>
+      </div>
+      <div class="grid dash">
+        <div class="card">
+          <div class="card-head"><h2>Faturamento — últimos 7 dias</h2><span class="hint">em R$</span></div>
+          <div class="chart" id="chart"></div>
+        </div>
+        <div class="grid" style="align-content:start">
+          <div class="card">
+            <div class="card-head"><h2>Mais vendidos</h2></div>
+            <ul class="list" id="top-list"></ul>
+          </div>
+          <div class="card">
+            <div class="card-head"><h2>Estoque baixo</h2><span class="hint">5 unidades ou menos</span></div>
+            <ul class="list" id="low-list"></ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- PDV ---------- -->
+    <section class="view" id="view-pdv">
+      <div class="grid pdv">
+        <div class="card">
+          <div class="toolbar">
+            <div class="search"><svg><use href="#i-search"/></svg><input class="input" id="pdv-busca" placeholder="Buscar produto…"></div>
+            <div class="chips" id="pdv-cats"></div>
+          </div>
+          <div class="products" id="pdv-produtos"></div>
+        </div>
+        <div class="card cart">
+          <div class="card-head"><h2>Carrinho</h2><button class="btn btn-danger" id="cart-clear" style="padding:6px 10px">Limpar</button></div>
+          <ul class="cart-items" id="cart-items"></ul>
+          <div class="cart-foot">
+            <div class="field">
+              <label for="cart-cliente">Cliente</label>
+              <select class="select" id="cart-cliente"></select>
+            </div>
+            <div class="field">
+              <label>Pagamento</label>
+              <div class="pay" id="cart-pay">
+                <button data-pay="pix" class="active">Pix</button>
+                <button data-pay="dinheiro">Dinheiro</button>
+                <button data-pay="credito">Crédito</button>
+                <button data-pay="debito">Débito</button>
+              </div>
+            </div>
+            <div class="total-row"><span class="lbl">Total</span><span class="big num" id="cart-total">R$ 0,00</span></div>
+            <button class="btn btn-accent btn-lg" id="cart-finish" disabled>Finalizar venda</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- Vendas ---------- -->
+    <section class="view" id="view-vendas">
+      <div class="card">
+        <div class="toolbar">
+          <div class="chips" id="vendas-filtro">
+            <button class="chip active" data-f="todas">Todas</button>
+            <button class="chip" data-f="concluida">Concluídas</button>
+            <button class="chip" data-f="cancelada">Canceladas</button>
+          </div>
+          <span style="flex:1"></span>
+          <button class="btn" id="vendas-refresh"><svg><use href="#i-refresh"/></svg>Atualizar</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>#</th><th>Data</th><th>Cliente</th><th class="right">Itens</th><th>Pagamento</th><th>Status</th><th class="right">Total</th></tr></thead>
+            <tbody id="vendas-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- Produtos ---------- -->
+    <section class="view" id="view-produtos">
+      <div class="card">
+        <div class="toolbar">
+          <div class="search"><svg><use href="#i-search"/></svg><input class="input" id="prod-busca" placeholder="Buscar por nome ou categoria…"></div>
+          <span style="flex:1"></span>
+          <button class="btn btn-primary" id="prod-novo"><svg><use href="#i-plus"/></svg>Novo produto</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>ID</th><th>Produto</th><th>Categoria</th><th class="right">Preço</th><th class="right">Estoque</th><th></th></tr></thead>
+            <tbody id="prod-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- Clientes ---------- -->
+    <section class="view" id="view-clientes">
+      <div class="card">
+        <div class="toolbar">
+          <div class="search"><svg><use href="#i-search"/></svg><input class="input" id="cli-busca" placeholder="Buscar cliente…"></div>
+          <span style="flex:1"></span>
+          <button class="btn btn-primary" id="cli-novo"><svg><use href="#i-plus"/></svg>Novo cliente</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Nome</th><th>E-mail</th><th>Telefone</th><th class="right">Compras</th><th class="right">Total gasto</th><th></th></tr></thead>
+            <tbody id="cli-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- Arquitetura ---------- -->
+    <section class="view" id="view-arquitetura">
+      <div class="card">
+        <div class="card-head"><h2>Três contêineres orquestrados pelo Docker Compose</h2><button class="btn" id="arch-refresh"><svg><use href="#i-refresh"/></svg>Verificar</button></div>
+        <div class="arch">
+          <div class="node">
+            <div class="ntop"><div class="nico" style="background:#2a52be"><svg><use href="#i-globe"/></svg></div><div><h3>web</h3><code>nginx:alpine · porta 8080</code></div></div>
+            <span class="badge b-ok" id="arch-web">online</span>
+            <ul><li>Entrega HTML, CSS e JS</li><li>Repassa <code>/api/*</code> para a API (gateway)</li><li>Único ponto de entrada do usuário</li></ul>
+          </div>
+          <div class="link"><svg><use href="#i-arrow"/></svg></div>
+          <div class="node">
+            <div class="ntop"><div class="nico" style="background:#f26a1b"><svg><use href="#i-server"/></svg></div><div><h3>api</h3><code>node:22-alpine · porta 3000</code></div></div>
+            <span class="badge b-muted" id="arch-api">…</span>
+            <ul><li>Express com endpoints REST (JSON)</li><li>Regras de negócio e validação</li><li>Venda em transação + baixa de estoque</li></ul>
+          </div>
+          <div class="link"><svg><use href="#i-arrow"/></svg></div>
+          <div class="node">
+            <div class="ntop"><div class="nico" style="background:#1f9d6b"><svg><use href="#i-db"/></svg></div><div><h3>db</h3><code>postgres:16-alpine · rede interna</code></div></div>
+            <span class="badge b-muted" id="arch-db">…</span>
+            <ul><li>Tabelas: produtos, clientes, vendas, itens_venda</li><li>Acesso exclusivo da API</li><li>Dados persistidos em volume</li></ul>
+          </div>
+        </div>
+        <div class="legend">
+          <p><strong>Fluxo:</strong> navegador → <code>web</code> (Nginx) → <code>api</code> (Node.js) → <code>db</code> (PostgreSQL). Os contêineres se encontram pelo nome do serviço na rede criada pelo Compose.</p>
+          <p id="arch-lat"></p>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- ================= Modal genérico ================= -->
+<div class="modal-bg" id="modal-bg">
+  <div class="card modal" role="dialog" aria-modal="true">
+    <div class="card-head"><h2 id="modal-title">—</h2><button class="btn icon-btn" id="modal-x" aria-label="Fechar">✕</button></div>
+    <div class="modal-body" id="modal-body"></div>
+    <div class="modal-foot" id="modal-foot"></div>
+  </div>
+</div>
+
+<div class="toasts" id="toasts"></div>
+
+<script src="app.js"></script>
+</body>
+</html>

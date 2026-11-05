@@ -1,0 +1,14 @@
+{
+  "name": "api-vendas",
+  "version": "1.0.0",
+  "description": "API do Sistema de Vendas (microsserviço)",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js"
+  },
+  "license": "ISC",
+  "dependencies": {
+    "express": "^5.3.0",
+    "pg": "^8.23.1"
+  }
+}

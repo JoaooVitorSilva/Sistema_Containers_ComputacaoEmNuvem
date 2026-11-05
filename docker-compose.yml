@@ -1,0 +1,55 @@
+# Sistema de Vendas — 3 contêineres
+#   web  (Nginx)       -> front-end + gateway   -> http://127.0.0.1:8080
+#   api  (Node/Express)-> regras de negócio     -> http://127.0.0.1:3000
+#   db   (PostgreSQL)  -> dados (só a API acessa; sem porta publicada)
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: vendas-db
+    environment:
+      POSTGRES_USER: vendas
+      POSTGRES_PASSWORD: vendas123
+      POSTGRES_DB: vendas
+      TZ: America/Sao_Paulo
+      PGTZ: America/Sao_Paulo
+    volumes:
+      - dados-vendas:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vendas -d vendas"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  api:
+    build: ./backend
+    image: vendas-api:v1
+    container_name: vendas-api
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: vendas
+      DB_PASSWORD: vendas123
+      DB_NAME: vendas
+      PORT: 3000
+    ports:
+      - "3000:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  web:
+    build: ./frontend
+    image: vendas-web:v1
+    container_name: vendas-web
+    ports:
+      - "8080:80"
+    depends_on:
+      - api
+    restart: unless-stopped
+
+volumes:
+  dados-vendas:
