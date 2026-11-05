@@ -85,32 +85,46 @@ $$('#nav button').forEach(b => (b.onclick = () => irPara(b.dataset.view)));
 // ---------------------------------------------------------
 // Saúde dos contêineres
 // ---------------------------------------------------------
-async function verificarSaude() {
-  const inicio = performance.now();
-  let apiOk = false, dbOk = false;
-  try {
-    const res = await fetch(API + '/health');
-    apiOk = true;
-    const h = await res.json();
-    dbOk = h.banco === 'ok';
-  } catch { /* API fora do ar */ }
-  const ms = Math.round(performance.now() - inicio);
+const SERVICOS = ['produtos', 'clientes', 'vendas'];
 
-  const tudoOk = apiOk && dbOk;
+// Pergunta a saúde de um microsserviço (via gateway). Retorna {ok, banco, ms}.
+async function saudeDe(servico) {
+  const inicio = performance.now();
+  try {
+    const res = await fetch(`${API}/health/${servico}`, { cache: 'no-store' });
+    const h = await res.json().catch(() => ({}));
+    return { ok: h.servico === servico, banco: h.banco === 'ok', ms: Math.round(performance.now() - inicio) };
+  } catch {
+    return { ok: false, banco: false, ms: null };
+  }
+}
+
+async function verificarSaude() {
+  const resultados = await Promise.all(SERVICOS.map(saudeDe));
+  const saude = Object.fromEntries(SERVICOS.map((s, i) => [s, resultados[i]]));
+  const dbOk = resultados.some(r => r.banco);
+  const fora = SERVICOS.filter(s => !saude[s].ok);
+
+  const tudoOk = fora.length === 0 && dbOk;
   $('#status-dot').className = 'dot ' + (tudoOk ? 'ok' : 'bad');
-  $('#status-text').textContent = tudoOk ? 'Todos os serviços online' : !apiOk ? 'API indisponível' : 'Banco indisponível';
-  $('#sf-api').textContent = apiOk ? '●' : '○';
-  $('#sf-db').textContent = dbOk ? '●' : '○';
-  $('#sf-api').style.color = apiOk ? '#4ade80' : '#f87171';
-  $('#sf-db').style.color = dbOk ? '#4ade80' : '#f87171';
-  $('#sf-web').style.color = '#4ade80';
+  $('#status-text').textContent = tudoOk ? 'Todos os serviços online'
+    : !dbOk && fora.length === 0 ? 'Banco indisponível'
+    : fora.length === 1 ? `Serviço de ${fora[0]} indisponível`
+    : `${fora.length} serviços indisponíveis`;
+
+  const ponto = (id, ok) => { const el = $(id); el.textContent = ok ? '●' : '○'; el.style.color = ok ? '#4ade80' : '#f87171'; };
+  ponto('#sf-web', true);
+  SERVICOS.forEach(s => ponto('#sf-' + s, saude[s].ok));
+  ponto('#sf-db', dbOk);
 
   const marca = (el, ok) => { el.textContent = ok ? 'online' : 'offline'; el.className = 'badge ' + (ok ? 'b-ok' : 'b-bad'); };
-  marca($('#arch-api'), apiOk);
+  SERVICOS.forEach(s => marca($('#arch-' + s), saude[s].ok));
   marca($('#arch-db'), dbOk);
-  $('#arch-lat').innerHTML = apiOk
-    ? `<strong>Última verificação:</strong> ${new Date().toLocaleTimeString('pt-BR')} — ida e volta web → api → db em <strong>${ms} ms</strong>.`
-    : '<strong>A API não respondeu.</strong> Verifique com <code>docker compose ps</code> e <code>docker compose logs api</code>.';
+
+  const tempos = SERVICOS.filter(s => saude[s].ok).map(s => `${s} ${saude[s].ms} ms`).join(' · ');
+  $('#arch-lat').innerHTML = `<strong>Última verificação:</strong> ${new Date().toLocaleTimeString('pt-BR')}` +
+    (tempos ? ` — ida e volta até cada serviço: ${tempos}.` : '.') +
+    (fora.length ? ` <strong>Fora do ar:</strong> ${fora.join(', ')}. Veja com <code>docker compose ps</code>.` : '');
 }
 $('#arch-refresh').onclick = () => verificarSaude().then(() => toast('Status atualizado'));
 
@@ -134,7 +148,9 @@ async function carregarPainel() {
           <strong class="num">${brl(p.total)}</strong></li>`).join('')
     : '<li class="empty">Nenhuma venda ainda</li>';
 
-  $('#low-list').innerHTML = d.estoque_baixo.length
+  $('#low-list').innerHTML = !d.estoque_disponivel
+    ? '<li class="empty">Serviço de produtos indisponível</li>'
+    : d.estoque_baixo.length
     ? d.estoque_baixo.map(p => `
         <li><div class="grow"><div class="title">${esc(p.nome)}</div><div class="meta">#${p.id}</div></div>
           <span class="badge ${p.estoque === 0 ? 'b-bad' : 'b-warn'}">${p.estoque} un.</span></li>`).join('')
@@ -174,7 +190,11 @@ function desenharGrafico(dias) {
 const pdv = { produtos: [], categoria: 'Todas', carrinho: new Map(), pagamento: 'pix' };
 
 async function carregarPdv() {
-  const [produtos, clientes] = await Promise.all([api('/produtos'), api('/clientes')]);
+  // Se o serviço de clientes estiver fora, o caixa continua vendendo para "Consumidor final"
+  const [produtos, clientes] = await Promise.all([
+    api('/produtos'),
+    api('/clientes').catch(() => { toast('Serviço de clientes indisponível: vendendo como Consumidor final', true); return []; }),
+  ]);
   pdv.produtos = produtos;
   // remove do carrinho o que não existe mais e ajusta ao estoque atual
   for (const [id, qtd] of pdv.carrinho) {
@@ -442,8 +462,8 @@ function renderClientes() {
       <td><strong>${esc(c.nome)}</strong></td>
       <td>${esc(c.email || '—')}</td>
       <td>${esc(c.telefone || '—')}</td>
-      <td class="right num">${c.compras}</td>
-      <td class="right num">${brl(c.total_gasto)}</td>
+      <td class="right num">${c.compras ?? '—'}</td>
+      <td class="right num">${c.total_gasto === null ? '<span title="Serviço de vendas indisponível">—</span>' : brl(c.total_gasto)}</td>
       <td class="right"><span class="actions">
         <button class="btn icon-btn" data-edit="${c.id}" title="Editar"><svg><use href="#i-edit"/></svg></button>
         <button class="btn icon-btn btn-danger" data-del="${c.id}" title="Excluir"><svg><use href="#i-trash"/></svg></button>
@@ -482,7 +502,7 @@ async function salvarCliente(c) {
 }
 
 async function excluirCliente(c) {
-  if (!confirm(`Excluir o cliente "${c.nome}"? As vendas dele passam a aparecer como "Consumidor final".`)) return;
+  if (!confirm(`Excluir o cliente "${c.nome}"? As vendas antigas continuam no histórico com o nome dele.`)) return;
   try {
     await api('/clientes/' + c.id, { method: 'DELETE' });
     toast('Cliente excluído');

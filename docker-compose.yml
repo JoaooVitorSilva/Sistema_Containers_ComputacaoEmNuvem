@@ -1,41 +1,78 @@
-# Sistema de Vendas — 3 contêineres
-#   web  (Nginx)       -> front-end + gateway   -> http://127.0.0.1:8080
-#   api  (Node/Express)-> regras de negócio     -> http://127.0.0.1:3000
-#   db   (PostgreSQL)  -> dados (só a API acessa; sem porta publicada)
+# Sistema de Vendas — 3 microsserviços que conversam entre si
+#
+#   web       (Nginx)    -> front-end + API Gateway       -> http://127.0.0.1:8080
+#   produtos  (Node.js)  -> catálogo e estoque            -> http://127.0.0.1:3001
+#   clientes  (Node.js)  -> cadastro de clientes          -> http://127.0.0.1:3002
+#   vendas    (Node.js)  -> vendas; chama produtos e clientes -> http://127.0.0.1:3003
+#   db        (PostgreSQL) -> 1 contêiner com 3 bancos: produtos_db, clientes_db, vendas_db
+#                             (sem porta publicada; cada serviço só acessa o seu banco)
 
 services:
   db:
     image: postgres:16-alpine
-    container_name: vendas-db
+    container_name: loja-db
     environment:
-      POSTGRES_USER: vendas
-      POSTGRES_PASSWORD: vendas123
-      POSTGRES_DB: vendas
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: admin123
       TZ: America/Sao_Paulo
       PGTZ: America/Sao_Paulo
     volumes:
-      - dados-vendas:/var/lib/postgresql/data
-      - ./db/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      - dados-microsservicos:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U vendas -d vendas"]
+      # -h 127.0.0.1: só fica "healthy" depois que os scripts de criação terminam
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U postgres"]
       interval: 5s
       timeout: 3s
-      retries: 10
+      retries: 20
     restart: unless-stopped
 
-  api:
-    build: ./backend
-    image: vendas-api:v1
-    container_name: vendas-api
+  produtos:
+    build: ./services/produtos
+    image: loja-produtos:v1
+    container_name: loja-produtos
     environment:
       DB_HOST: db
-      DB_PORT: 5432
-      DB_USER: vendas
-      DB_PASSWORD: vendas123
-      DB_NAME: vendas
-      PORT: 3000
+      DB_USER: produtos_user
+      DB_PASSWORD: produtos123
+      DB_NAME: produtos_db
     ports:
-      - "3000:3000"
+      - "3001:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  clientes:
+    build: ./services/clientes
+    image: loja-clientes:v1
+    container_name: loja-clientes
+    environment:
+      DB_HOST: db
+      DB_USER: clientes_user
+      DB_PASSWORD: clientes123
+      DB_NAME: clientes_db
+      VENDAS_URL: http://vendas:3000
+    ports:
+      - "3002:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  vendas:
+    build: ./services/vendas
+    image: loja-vendas:v1
+    container_name: loja-vendas
+    environment:
+      DB_HOST: db
+      DB_USER: vendas_user
+      DB_PASSWORD: vendas123
+      DB_NAME: vendas_db
+      PRODUTOS_URL: http://produtos:3000
+      CLIENTES_URL: http://clientes:3000
+    ports:
+      - "3003:3000"
     depends_on:
       db:
         condition: service_healthy
@@ -43,13 +80,15 @@ services:
 
   web:
     build: ./frontend
-    image: vendas-web:v1
-    container_name: vendas-web
+    image: loja-web:v1
+    container_name: loja-web
     ports:
       - "8080:80"
     depends_on:
-      - api
+      - produtos
+      - clientes
+      - vendas
     restart: unless-stopped
 
 volumes:
-  dados-vendas:
+  dados-microsservicos:

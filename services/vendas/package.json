@@ -1,7 +1,7 @@
 {
-  "name": "api-vendas",
+  "name": "servico-vendas",
   "version": "1.0.0",
-  "description": "API do Sistema de Vendas (microsserviço)",
+  "description": "Microsserviço de vendas do Sistema de Vendas",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js"

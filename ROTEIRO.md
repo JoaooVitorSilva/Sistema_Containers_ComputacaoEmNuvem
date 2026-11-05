@@ -1,54 +1,22 @@
-# Sistema de Vendas — 3 contêineres (Docker Compose)
-
-## O que é
-
-| Contêiner | Imagem | Papel | Acesso |
-|---|---|---|---|
-| **web** | `nginx:alpine` | Front-end (HTML/CSS/JS) e **gateway**: repassa `/api/*` para a API | http://127.0.0.1:8080 |
-| **api** | `node:22-alpine` | Microsserviço REST (Express): produtos, clientes, vendas, painel | http://127.0.0.1:3000 |
-| **db** | `postgres:16-alpine` | Banco de dados. **Só a API acessa** (sem porta publicada) | rede interna |
-
-Fluxo: navegador → **web** → **api** → **db**
-
-Os contêineres se encontram **pelo nome do serviço**: o Nginx chama `http://api:3000` e a API conecta em `db:5432`. Quem cria essa rede interna é o Compose.
-
-```
-sistema-vendas/
-├── docker-compose.yml     ← sobe os 3 contêineres juntos
-├── db/
-│   └── init.sql           ← tabelas + dados iniciais (roda na 1ª subida)
-├── backend/               ← contêiner "api"
-│   ├── Dockerfile
-│   ├── package.json / package-lock.json
-│   └── src/server.js
-└── frontend/              ← contêiner "web"
-    ├── Dockerfile
-    ├── nginx.conf
-    └── public/  (index.html, styles.css, app.js)
-```
-
----
+# Roteiro — Sistema de Vendas com 3 microsserviços
 
 ## 1. Subir o sistema (Windows)
 
 1. Abra o **Docker Desktop** e espere aparecer **"Engine running"**.
-2. Remova o contêiner da atividade anterior, que usa a porta 3000:
+2. Abra o PowerShell na pasta do projeto (onde está o `docker-compose.yml`).
+3. **Se você já rodou a versão antiga** (com o contêiner `api`), remova tudo dela, inclusive o banco antigo:
    ```
-   docker rm -f produtos
+   docker compose down -v
+   docker rm -f vendas-web vendas-api vendas-db
    ```
-3. Na pasta `sistema-vendas` (onde está o `docker-compose.yml`), abra o PowerShell e rode:
+   Se aparecer "No such container", tudo bem.
+4. Suba:
    ```
    docker compose up -d --build
-   ```
-   A primeira vez demora porque baixa as imagens do Postgres e do Nginx.
-4. Confira:
-   ```
    docker compose ps
    ```
-   Os 3 serviços devem aparecer como `running`, e o `db` como `healthy`.
+   Devem aparecer 5 contêineres: `loja-web`, `loja-produtos`, `loja-clientes`, `loja-vendas` e `loja-db` (este como `healthy`).
 5. Abra **http://127.0.0.1:8080**. Use 127.0.0.1, porque `localhost` trava nesse PC.
-
-> Não precisa rodar `npm install`: cada imagem instala as próprias dependências no `docker build`.
 
 ---
 
@@ -57,82 +25,105 @@ sistema-vendas/
 | Para quê | Comando |
 |---|---|
 | Ver os contêineres | `docker compose ps` |
-| Ver as imagens criadas | `docker images` |
-| Logs da API (cada requisição aparece) | `docker compose logs -f api` |
-| Logs do banco | `docker compose logs db` |
+| Ver as imagens | `docker images` |
+| **Ver os serviços conversando** | `docker compose logs -f vendas` |
+| Logs de todos | `docker compose logs -f` |
+| Derrubar um serviço (resiliência) | `docker compose stop clientes` |
+| Ligar de novo | `docker compose start clientes` |
 | Parar tudo (mantém os dados) | `docker compose down` |
-| Subir de novo | `docker compose up -d` |
-| **Zerar o banco** (volta aos dados iniciais) | `docker compose down -v` e depois `docker compose up -d --build` |
-| Recriar depois de mudar o código | `docker compose up -d --build` |
-| Entrar no banco pelo terminal | `docker exec -it vendas-db psql -U vendas -d vendas` |
-
-Dentro do `psql`: `\dt` lista as tabelas, `SELECT * FROM vendas;` mostra as vendas e `\q` sai.
+| Zerar os bancos | `docker compose down -v` e depois `docker compose up -d --build` |
+| Ver os 3 bancos | `docker exec -it loja-db psql -U postgres -c "\l"` |
+| Entrar no banco de vendas | `docker exec -it loja-db psql -U postgres -d vendas_db` |
 
 ---
 
-## 3. Roteiro da apresentação (~5 min)
+## 3. Roteiro da demonstração
 
-1. **Arquitetura.** Abra a tela *Arquitetura* no sistema. Os 3 cartões mostram status online e o tempo de ida e volta.
-   No terminal, rode `docker compose ps` e `docker images`.
-2. **Arquivos.** Mostre o `docker-compose.yml`, que traz os 3 serviços, o `depends_on`, o healthcheck, o volume e as portas. Mostre também os dois `Dockerfile`.
-3. **Painel.** Faturamento, ticket médio, gráfico dos últimos 7 dias, mais vendidos e estoque baixo. Tudo vem do banco, via API.
-4. **Nova venda.** Adicione produtos ao carrinho, escolha cliente e pagamento e finalize. O recibo aparece.
-   Volte ao Painel: o faturamento e o estoque mudaram.
-5. **Regra de negócio.** Tente vender mais do que o estoque: o botão bloqueia, e a API recusa com erro 409.
-6. **Vendas.** Abra uma venda e clique em **Cancelar venda**: os itens voltam ao estoque (compensação).
-7. **Produtos/Clientes.** Cadastre um produto e mostre que ele aparece na hora em *Nova venda*.
-8. **Prova de que o banco é separado.** Rode:
+1. **Contêineres:** `docker compose ps`. São 5 contêineres e 3 microsserviços. O `loja-db` não tem porta publicada.
+2. **Arquitetura:** a tela *Arquitetura* do sistema mostra o gateway, os 3 serviços conversando por HTTP e o banco, com status online e tempo de resposta.
+3. **Os serviços conversando:** num segundo terminal, deixe rodando:
    ```
-   docker compose restart api
+   docker compose logs -f vendas
    ```
-   Recarregue a página e veja que os dados continuam lá, porque estão no contêiner `db`, em um volume.
-   Opcional: `docker compose stop db`. Na tela *Arquitetura*, o db fica **offline**. Depois, `docker compose start db`.
-9. **API direto.** Abra http://127.0.0.1:3000/produtos (JSON puro). É o mesmo serviço da atividade anterior, agora com banco.
+   Faça uma venda em **Nova venda**. No log aparece:
+   ```
+   [vendas] -> clientes: GET /clientes/2 200
+   [vendas] -> produtos: POST /produtos/reservar 200
+   [vendas] POST /vendas -> 201
+   ```
+4. **Regra de negócio:** tente vender mais que o estoque. O serviço de produtos recusa (409) e nada é gravado.
+5. **Compensação (Saga):** em *Vendas*, cancele uma venda. No log aparece `-> produtos: POST /produtos/devolver 200`, e o estoque volta.
+6. **Resiliência:** rode `docker compose stop clientes`.
+   - A tela *Arquitetura* mostra clientes **offline**.
+   - Em *Nova venda*, ainda dá para vender como "Consumidor final".
+   - Rode `docker compose start clientes` e tudo volta.
+7. **Database per Service:** `docker exec -it loja-db psql -U postgres -c "\l"` mostra os 3 bancos, cada um com um dono diferente.
+8. **Serviço direto:** abra http://127.0.0.1:3001/produtos. É o microsserviço de produtos respondendo sozinho, sem o gateway.
 
 ---
 
-## 4. Explicação para o professor
+## 4. Explicação para a banca
 
-> O sistema foi dividido em **três contêineres com responsabilidades separadas**, como no slide de componentes da arquitetura: cliente → gateway → serviço → banco.
+> Dividimos o sistema em **três microsserviços**, cada um dono de uma parte do negócio:
 >
-> - O **web** (Nginx) entrega o front-end e funciona como **API Gateway**: o navegador só conversa com ele, e ele repassa as chamadas `/api` para o serviço.
-> - A **api** (Node.js + Express) concentra as **regras de negócio**. Ela é dona dos dados e expõe endpoints **REST** com JSON (GET, POST, PUT, DELETE).
-> - O **db** (PostgreSQL) guarda os dados e **só é acessado pela API**, seguindo o padrão *Database per Service*. Ele não tem porta publicada para fora.
+> - **Produtos** cuida do catálogo e do estoque.
+> - **Clientes** cuida do cadastro.
+> - **Vendas** registra as vendas e é quem **coordena** os outros dois.
 >
-> O **Docker Compose** sobe os três de uma vez, cria a rede interna (por isso um contêiner chama o outro pelo nome) e o **volume** que mantém os dados mesmo se o contêiner for recriado. O `healthcheck` com `depends_on` faz a API só iniciar quando o banco está pronto, e a API ainda tenta reconectar sozinha (resiliência).
+> Eles conversam por **HTTP com JSON** pela rede interna do Docker Compose, chamando uns aos outros pelo nome (`http://produtos:3000`).
 >
-> Uma venda é gravada numa **transação**: os itens e a baixa de estoque são salvos juntos, ou nada é salvo. O `SELECT ... FOR UPDATE` impede que duas vendas simultâneas vendam o mesmo item. O **cancelamento** devolve o estoque, como a etapa de compensação de uma Saga.
+> Quando uma venda acontece, o serviço de vendas pergunta ao de clientes se o cliente existe, pede ao de produtos para **reservar o estoque** e só então grava a venda. Se a gravação falhar, ele pede ao de produtos para **devolver** o estoque. Essa é a **compensação** do padrão **Saga**, que substitui a transação única que não existe entre bancos diferentes.
 >
-> Cada contêiner pode ser atualizado e escalado de forma independente. Num Kubernetes, cada um viraria um Deployment com seu Service.
+> Cada serviço tem **o próprio banco** (Database per Service). Usamos um único contêiner PostgreSQL com três bancos e um usuário por serviço, e um serviço não consegue acessar o banco do outro.
+>
+> Na frente fica o **Nginx como API Gateway**: o navegador só fala com ele, e ele encaminha `/api/produtos`, `/api/clientes` e `/api/vendas` para o serviço certo. As rotas internas, como reservar estoque, ficam bloqueadas para o navegador.
+>
+> Se um serviço cai, os outros continuam funcionando (**resiliência**), e cada um pode ser atualizado e escalado separadamente.
 
 ---
 
-## 5. Endpoints da API
+## 5. Endpoints
+
+Pelo gateway, use o prefixo `/api` (ex.: http://127.0.0.1:8080/api/produtos).
+
+**Produtos** (`produtos:3000`, porta 3001 no PC)
 
 | Método | Caminho | O que faz |
 |---|---|---|
-| GET | `/health` | Status da API e do banco |
-| GET | `/produtos?busca=` | Lista produtos ativos |
-| GET | `/produtos/:id` | Um produto (404 se não existir) |
-| POST | `/produtos` | Cadastra `{nome, categoria, preco, estoque}` |
-| PUT | `/produtos/:id` | Atualiza |
-| DELETE | `/produtos/:id` | Remove do catálogo (o histórico de vendas é mantido) |
-| GET/POST | `/clientes` | Lista (com total gasto) / cadastra |
-| PUT/DELETE | `/clientes/:id` | Atualiza / remove |
+| GET | `/produtos?busca=` | Lista |
+| GET | `/produtos/:id` | Um produto |
+| GET | `/produtos/estoque-baixo` | Produtos com 5 unidades ou menos |
+| POST / PUT / DELETE | `/produtos`, `/produtos/:id` | Cadastra, edita, remove do catálogo |
+| POST | `/produtos/reservar` | *Interno:* confere e baixa o estoque (tudo ou nada) |
+| POST | `/produtos/devolver` | *Interno:* devolve o estoque (compensação) |
+
+**Clientes** (`clientes:3000`, porta 3002 no PC)
+
+| Método | Caminho | O que faz |
+|---|---|---|
+| GET | `/clientes` | Lista, com compras e total gasto (vindos de vendas) |
+| GET | `/clientes/:id` | Um cliente (usado por vendas) |
+| POST / PUT / DELETE | `/clientes`, `/clientes/:id` | Cadastra, edita, remove |
+
+**Vendas** (`vendas:3000`, porta 3003 no PC)
+
+| Método | Caminho | O que faz |
+|---|---|---|
 | GET | `/vendas` | Histórico |
 | GET | `/vendas/:id` | Venda com itens |
 | POST | `/vendas` | `{cliente_id, forma_pagamento, itens:[{produto_id, quantidade}]}` |
 | POST | `/vendas/:id/cancelar` | Cancela e devolve o estoque |
 | GET | `/dashboard` | Números do painel |
+| GET | `/vendas/resumo-clientes` | *Interno:* compras por cliente (usado por clientes) |
 
-Pelo front, as mesmas rotas são chamadas com o prefixo `/api` (ex.: http://127.0.0.1:8080/api/produtos).
+Todos os serviços têm `GET /health`. Pelo gateway, use `/api/health/produtos`, `/api/health/clientes` ou `/api/health/vendas`.
 
 ---
 
 ## Problemas comuns
 
-- **"port is already allocated" (3000)**: o contêiner `produtos` da atividade anterior ainda existe. Rode `docker rm -f produtos`.
+- **"container name already in use"**: há contêineres de uma execução anterior. Rode `docker compose down` (ou `docker rm -f` com o nome que aparecer) e suba de novo.
+- **"port is already allocated"**: outra coisa está usando a porta 8080, 3001, 3002 ou 3003. Veja com `docker ps`.
 - **Página carrega infinitamente**: use `127.0.0.1` no lugar de `localhost`.
-- **Tela mostra "API indisponível"**: rode `docker compose logs api`.
-- **Mudei o `init.sql` e nada mudou**: ele só roda quando o volume é criado. Rode `docker compose down -v` e depois `docker compose up -d --build`.
-- **Mudei o front ou a API e não apareceu**: rode `docker compose up -d --build` e recarregue com Ctrl+F5.
+- **Tela mostra um serviço offline**: rode `docker compose ps` e `docker compose logs <serviço>`.
+- **Mudei o SQL e nada mudou**: os scripts de `db/init` só rodam quando o volume é criado. Rode `docker compose down -v` e depois `docker compose up -d --build`.

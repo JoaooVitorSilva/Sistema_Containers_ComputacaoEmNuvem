@@ -54,7 +54,9 @@
     </nav>
     <div class="sidebar-foot">
       <div class="row"><span>web</span><span id="sf-web">●</span></div>
-      <div class="row"><span>api</span><span id="sf-api">…</span></div>
+      <div class="row"><span>produtos</span><span id="sf-produtos">…</span></div>
+      <div class="row"><span>clientes</span><span id="sf-clientes">…</span></div>
+      <div class="row"><span>vendas</span><span id="sf-vendas">…</span></div>
       <div class="row"><span>db</span><span id="sf-db">…</span></div>
     </div>
   </aside>
@@ -187,28 +189,46 @@
     <!-- ---------- Arquitetura ---------- -->
     <section class="view" id="view-arquitetura">
       <div class="card">
-        <div class="card-head"><h2>Três contêineres orquestrados pelo Docker Compose</h2><button class="btn" id="arch-refresh"><svg><use href="#i-refresh"/></svg>Verificar</button></div>
+        <div class="card-head"><h2>3 microsserviços conversando, orquestrados pelo Docker Compose</h2><button class="btn" id="arch-refresh"><svg><use href="#i-refresh"/></svg>Verificar</button></div>
         <div class="arch">
-          <div class="node">
-            <div class="ntop"><div class="nico" style="background:#2a52be"><svg><use href="#i-globe"/></svg></div><div><h3>web</h3><code>nginx:alpine · porta 8080</code></div></div>
-            <span class="badge b-ok" id="arch-web">online</span>
-            <ul><li>Entrega HTML, CSS e JS</li><li>Repassa <code>/api/*</code> para a API (gateway)</li><li>Único ponto de entrada do usuário</li></ul>
+          <div class="tier tier-1">
+            <div class="node">
+              <div class="ntop"><div class="nico" style="background:#2a52be"><svg><use href="#i-globe"/></svg></div><div><h3>web · API Gateway</h3><code>nginx:alpine · porta 8080</code></div></div>
+              <span class="badge b-ok" id="arch-web">online</span>
+              <ul><li>Entrega as telas (HTML, CSS e JS)</li><li>Envia cada <code>/api/…</code> ao serviço dono do recurso</li></ul>
+            </div>
           </div>
-          <div class="link"><svg><use href="#i-arrow"/></svg></div>
-          <div class="node">
-            <div class="ntop"><div class="nico" style="background:#f26a1b"><svg><use href="#i-server"/></svg></div><div><h3>api</h3><code>node:22-alpine · porta 3000</code></div></div>
-            <span class="badge b-muted" id="arch-api">…</span>
-            <ul><li>Express com endpoints REST (JSON)</li><li>Regras de negócio e validação</li><li>Venda em transação + baixa de estoque</li></ul>
+          <div class="down"><svg><use href="#i-arrow"/></svg></div>
+          <div class="tier tier-2">
+            <div class="node">
+              <div class="ntop"><div class="nico" style="background:#f26a1b"><svg><use href="#i-box"/></svg></div><div><h3>produtos</h3><code>node:22-alpine · porta 3001</code></div></div>
+              <span class="badge b-muted" id="arch-produtos">…</span>
+              <ul><li>Catálogo e estoque</li><li>Reserva e devolve estoque</li><li>Banco: <code>produtos_db</code></li></ul>
+            </div>
+            <div class="link link-left" title="vendas chama produtos"><svg><use href="#i-arrow"/></svg><span>HTTP</span></div>
+            <div class="node node-main">
+              <div class="ntop"><div class="nico" style="background:#f26a1b"><svg><use href="#i-cart"/></svg></div><div><h3>vendas</h3><code>node:22-alpine · porta 3003</code></div></div>
+              <span class="badge b-muted" id="arch-vendas">…</span>
+              <ul><li>Orquestra a venda (Saga)</li><li>Chama produtos e clientes</li><li>Banco: <code>vendas_db</code></li></ul>
+            </div>
+            <div class="link" title="vendas chama clientes"><svg><use href="#i-arrow"/></svg><span>HTTP</span></div>
+            <div class="node">
+              <div class="ntop"><div class="nico" style="background:#f26a1b"><svg><use href="#i-users"/></svg></div><div><h3>clientes</h3><code>node:22-alpine · porta 3002</code></div></div>
+              <span class="badge b-muted" id="arch-clientes">…</span>
+              <ul><li>Cadastro de clientes</li><li>Pede o resumo de compras a vendas</li><li>Banco: <code>clientes_db</code></li></ul>
+            </div>
           </div>
-          <div class="link"><svg><use href="#i-arrow"/></svg></div>
-          <div class="node">
-            <div class="ntop"><div class="nico" style="background:#1f9d6b"><svg><use href="#i-db"/></svg></div><div><h3>db</h3><code>postgres:16-alpine · rede interna</code></div></div>
-            <span class="badge b-muted" id="arch-db">…</span>
-            <ul><li>Tabelas: produtos, clientes, vendas, itens_venda</li><li>Acesso exclusivo da API</li><li>Dados persistidos em volume</li></ul>
+          <div class="down"><svg><use href="#i-arrow"/></svg></div>
+          <div class="tier tier-1">
+            <div class="node">
+              <div class="ntop"><div class="nico" style="background:#1f9d6b"><svg><use href="#i-db"/></svg></div><div><h3>db</h3><code>postgres:16-alpine · sem porta externa</code></div></div>
+              <span class="badge b-muted" id="arch-db">…</span>
+              <ul><li>Um contêiner, 3 bancos: <code>produtos_db</code>, <code>clientes_db</code>, <code>vendas_db</code></li><li>Cada serviço tem usuário próprio e só acessa o seu banco</li></ul>
+            </div>
           </div>
         </div>
         <div class="legend">
-          <p><strong>Fluxo:</strong> navegador → <code>web</code> (Nginx) → <code>api</code> (Node.js) → <code>db</code> (PostgreSQL). Os contêineres se encontram pelo nome do serviço na rede criada pelo Compose.</p>
+          <p><strong>Fluxo de uma venda:</strong> navegador → <code>web</code> → <code>vendas</code> → <code>clientes</code> (o cliente existe?) → <code>produtos</code> (reserva o estoque) → grava em <code>vendas_db</code>. Os contêineres se encontram pelo nome na rede do Compose.</p>
           <p id="arch-lat"></p>
         </div>
       </div>
